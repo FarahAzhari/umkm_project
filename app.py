@@ -7,17 +7,7 @@ import configparser
 
 app = Flask(__name__)
 
-# --- Baca konfigurasi dari file ---
-def load_config():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    return {
-        'api_key': config.get('dashscope', 'api_key'),
-        'model': config.get('dashscope', 'model_name')
-    }
-
 # --- Konfigurasi DashScope ---
-cfg = load_config()
 dashscope.api_key = config.API_KEY
 dashscope.base_http_api_url = config.BASE_HTTP_URL
 
