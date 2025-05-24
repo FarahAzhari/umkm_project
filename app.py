@@ -10,7 +10,6 @@ app = Flask(__name__)
 # DashScope config
 dashscope.api_key = config.API_KEY
 dashscope.base_http_api_url = config.BASE_HTTP_URL
-
 # def ask_qwen(prompt):
 #     response = Generation.call(
 #         model='qwen-plus',
@@ -34,6 +33,17 @@ def ask_qwen(user_text):
         prompt=full_prompt
     )
     return response.output.text
+
+def ask_qwen(prompt):
+    try:
+        response = Generation.call(
+            model='qwen-plus-latest',
+            prompt=prompt
+        )
+        return response.output.text
+    except Exception as e:
+        return f"Gagal mengambil respon dari Qwen: {str(e)}"
+
 
 def cek_stok_produk(nama_produk):
     conn = db.get_connection()
@@ -59,10 +69,18 @@ def tambah_stok_produk(nama_produk, jumlah=1):
     cursor.close()
     conn.close()
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/listen')
+def listen():
+    text = request.args.get('text', '').strip()
+    if not text:
+        return jsonify({'response': 'Tidak ada input suara.'})
+    
+    answer = ask_qwen(text)
+    return jsonify({'response': answer})
 
 @app.route('/listen')
 def listen():
@@ -88,6 +106,7 @@ def listen():
         return jsonify({'response': result.get('response', '')})
     else:
         return jsonify({'response': llm_result})
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
