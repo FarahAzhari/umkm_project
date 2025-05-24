@@ -31,7 +31,7 @@ def listen_and_convert():
 # --- Kirim ke Qwen ---
 def ask_qwen(prompt):
     response = Generation.call(
-        model=cfg['model'],
+        model='qwen-plus',
         prompt=prompt
     )
     return response.output.text
