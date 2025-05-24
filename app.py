@@ -13,20 +13,24 @@ dashscope.base_http_api_url = config.BASE_HTTP_URL
 
 # --- Fungsi rekam dan ubah ke teks ---
 def listen_and_convert():
+    logs = []
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        print("🎤 Sedang mendengarkan... Silakan bicara")
+        logs.append("🎤 Mendengarkan...")
         recognizer.adjust_for_ambient_noise(source)
         audio_data = recognizer.listen(source)
-        print("🔊 Mengenali suara...")
 
         try:
             text = recognizer.recognize_google(audio_data, language='id-ID')
-            return text
+            logs.append(f"✅ Suara dikenali: {text}")
+            return text, logs
         except sr.UnknownValueError:
-            return "Maaf, saya tidak bisa memahami suara Anda."
+            logs.append("❌ Tidak bisa mengenali suara.")
+            return "Maaf, saya tidak bisa memahami suara Anda.", logs
         except sr.RequestError:
-            return "Terjadi kesalahan saat menghubungi layanan pengenalan suara."
+            logs.append("❌ Gagal menghubungi layanan pengenalan suara.")
+            return "Terjadi kesalahan saat menghubungi layanan pengenalan suara.", logs
+
 
 # --- Kirim ke Qwen ---
 def ask_qwen(prompt):
@@ -44,12 +48,15 @@ def index():
 # --- Endpoint API untuk suara ---
 @app.route('/listen', methods=['GET'])
 def listen():
-    user_speech = listen_and_convert()
+    user_speech, logs = listen_and_convert()
     answer = ask_qwen(user_speech) if user_speech else "Tidak ada input suara."
+    logs.append(f"💬 Qwen menjawab: {answer}")
     return jsonify({
         'input': user_speech,
-        'response': answer
+        'response': answer,
+        'logs': logs
     })
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -6,20 +6,51 @@
 </head>
 <body>
     <h2>🎙️ Qwen Voice Assistant</h2>
+    <p id="status"><em>Status: menunggu</em></p>
     <button onclick="getSpeech()">🎤 Mulai Bicara</button>
     <p><strong>Anda:</strong> <span id="userInput">-</span></p>
     <p><strong>Qwen:</strong> <span id="qwenResponse">-</span></p>
 
-    <script>
-        function getSpeech() {
-            fetch('/listen')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('userInput').textContent = data.input;
-                    document.getElementById('qwenResponse').textContent = data.response;
-                })
-                .catch(err => console.error(err));
+    <p><strong>Log:</strong></p>
+    <ul id="logOutput"></ul>
+
+<script>
+    async function getSpeech() {
+        const statusEl = document.getElementById('status');
+        const userInputEl = document.getElementById('userInput');
+        const qwenResponseEl = document.getElementById('qwenResponse');
+        const logOutput = document.getElementById('logOutput');
+
+        // 1. Reset everything
+        userInputEl.textContent = "-";
+        qwenResponseEl.textContent = "-";
+        logOutput.innerHTML = "";
+        
+        // 2. Immediately show "Mendengarkan..."
+        statusEl.textContent = "🎤 Mendengarkan...";
+
+        try {
+            const response = await fetch('/listen');
+            const data = await response.json();
+
+            // 3. After voice input is done and response is received
+            userInputEl.textContent = data.input;
+            qwenResponseEl.textContent = data.response;
+            statusEl.textContent = "✅ Qwen menjawab.";
+
+            // Show logs (optional)
+            data.logs.forEach(log => {
+                const li = document.createElement('li');
+                li.textContent = log;
+                logOutput.appendChild(li);
+            });
+        } catch (err) {
+            console.error(err);
+            statusEl.textContent = "❌ Gagal mengambil suara.";
+            logOutput.innerHTML = "<li>❌ Terjadi kesalahan.</li>";
         }
-    </script>
+    }
+</script>
+
 </body>
 </html>
