@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Qwen Voice Assistant</title>
+</head>
+<body>
+    <h2>🎙️ Qwen Voice Assistant</h2>
+    <button onclick="getSpeech()">🎤 Mulai Bicara</button>
+    <p><strong>Anda:</strong> <span id="userInput">-</span></p>
+    <p><strong>Qwen:</strong> <span id="qwenResponse">-</span></p>
+
+    <script>
+        function getSpeech() {
+            fetch('/listen')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('userInput').textContent = data.input;
+                    document.getElementById('qwenResponse').textContent = data.response;
+                })
+                .catch(err => console.error(err));
+        }
+    </script>
+</body>
+</html>
