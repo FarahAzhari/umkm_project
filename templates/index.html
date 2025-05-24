@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>Qwen Voice Assistant</title>
 </head>
 <body>
@@ -22,8 +22,8 @@
 
         recognition.lang = 'id-ID';
         recognition.interimResults = true;
+        recognition.continuous = true;
         recognition.maxAlternatives = 3;
-        recognition.continuous = false;
 
         const btnSpeak = document.getElementById('btnSpeak');
         const btnStopSpeech = document.getElementById('btnStopSpeech');
@@ -32,16 +32,20 @@
 
         let listening = false;
         let finalTranscript = '';
+        let silenceTimer = null;
+        let userCancelled = false;
 
         btnSpeak.onclick = () => {
             if (!listening) {
                 recognition.start();
                 listening = true;
+                userCancelled = false;
                 finalTranscript = '';
                 btnSpeak.textContent = '⏹️ Berhenti Mendengarkan';
                 userInput.textContent = "🎤 Sedang mendengarkan... Silakan bicara";
                 qwenResponse.textContent = "-";
             } else {
+                userCancelled = true;
                 recognition.stop();
                 listening = false;
                 btnSpeak.textContent = '🎤 Mulai Bicara';
@@ -53,54 +57,55 @@
         };
 
         function speakResponse(text) {
-            if (!('speechSynthesis' in window)) return;
-
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'id-ID';
 
             const voices = speechSynthesis.getVoices();
-            const indonesianVoice = voices.find(v => v.lang.startsWith('id'));
-            if (indonesianVoice) {
-                utterance.voice = indonesianVoice;
-            }
+            const indoVoice = voices.find(v => v.lang.startsWith('id'));
+            if (indoVoice) utterance.voice = indoVoice;
 
             speechSynthesis.speak(utterance);
+        }
+
+        function resetSilenceTimer() {
+            if (silenceTimer) clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(() => {
+                recognition.stop();
+            }, 1500); // 1.5 seconds of silence = done
         }
 
         recognition.onresult = (event) => {
             let interimTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
+                    finalTranscript += transcript;
                 } else {
-                    interimTranscript += event.results[i][0].transcript;
+                    interimTranscript += transcript;
                 }
             }
 
-            if (interimTranscript) {
-                userInput.textContent = interimTranscript + ' ...';
-            } else {
-                userInput.textContent = finalTranscript;
-            }
+            const combined = finalTranscript + interimTranscript;
+            userInput.textContent = combined + (interimTranscript ? ' ...' : '');
+            resetSilenceTimer();
         };
 
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            if (event.error === 'no-speech') {
-                userInput.textContent = "Tidak ada suara yang tertangkap, silakan coba lagi.";
-            } else {
-                userInput.textContent = "Terjadi kesalahan: " + event.error;
-            }
+            userInput.textContent = "❌ Error: " + event.error;
             listening = false;
             btnSpeak.textContent = '🎤 Mulai Bicara';
             finalTranscript = '';
         };
 
         recognition.onend = () => {
-            if (!finalTranscript.trim()) {
-                userInput.textContent = "Tidak ada suara yang tertangkap, silakan coba lagi.";
+            if (userCancelled || !finalTranscript.trim()) {
+                userInput.textContent = userCancelled
+                    ? "❌ Dihentikan sebelum selesai."
+                    : "❌ Tidak ada suara yang tertangkap.";
                 listening = false;
                 btnSpeak.textContent = '🎤 Mulai Bicara';
+                finalTranscript = '';
                 return;
             }
 
@@ -111,7 +116,7 @@
                     speakResponse(data.response);
                 })
                 .catch(err => {
-                    qwenResponse.textContent = "Terjadi kesalahan saat menghubungi server.";
+                    qwenResponse.textContent = "❌ Gagal mengambil respon dari server.";
                     console.error(err);
                 });
 

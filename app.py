@@ -10,11 +10,15 @@ dashscope.api_key = config.API_KEY
 dashscope.base_http_api_url = config.BASE_HTTP_URL
 
 def ask_qwen(prompt):
-    response = Generation.call(
-        model='qwen-plus',
-        prompt=prompt
-    )
-    return response.output.text
+    try:
+        response = Generation.call(
+            model='qwen-plus-latest',
+            prompt=prompt
+        )
+        return response.output.text
+    except Exception as e:
+        return f"Gagal mengambil respon dari Qwen: {str(e)}"
+
 
 @app.route('/')
 def index():
