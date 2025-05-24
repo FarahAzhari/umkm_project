@@ -1,56 +1,124 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Qwen Voice Assistant</title>
 </head>
 <body>
     <h2>🎙️ Qwen Voice Assistant</h2>
-    <p id="status"><em>Status: menunggu</em></p>
-    <button onclick="getSpeech()">🎤 Mulai Bicara</button>
+    <button id="btnSpeak">🎤 Mulai Bicara</button>
+    <button id="btnStopSpeech">⏹️ Stop Qwen Bicara</button>
+
     <p><strong>Anda:</strong> <span id="userInput">-</span></p>
     <p><strong>Qwen:</strong> <span id="qwenResponse">-</span></p>
 
-    <p><strong>Log:</strong></p>
-    <ul id="logOutput"></ul>
-
-<script>
-    async function getSpeech() {
-        const statusEl = document.getElementById('status');
-        const userInputEl = document.getElementById('userInput');
-        const qwenResponseEl = document.getElementById('qwenResponse');
-        const logOutput = document.getElementById('logOutput');
-
-        // 1. Reset everything
-        userInputEl.textContent = "-";
-        qwenResponseEl.textContent = "-";
-        logOutput.innerHTML = "";
-        
-        // 2. Immediately show "Mendengarkan..."
-        statusEl.textContent = "🎤 Mendengarkan...";
-
-        try {
-            const response = await fetch('/listen');
-            const data = await response.json();
-
-            // 3. After voice input is done and response is received
-            userInputEl.textContent = data.input;
-            qwenResponseEl.textContent = data.response;
-            statusEl.textContent = "✅ Qwen menjawab.";
-
-            // Show logs (optional)
-            data.logs.forEach(log => {
-                const li = document.createElement('li');
-                li.textContent = log;
-                logOutput.appendChild(li);
-            });
-        } catch (err) {
-            console.error(err);
-            statusEl.textContent = "❌ Gagal mengambil suara.";
-            logOutput.innerHTML = "<li>❌ Terjadi kesalahan.</li>";
+    <script>
+        if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+            alert('Browser Anda tidak mendukung Web Speech API. Gunakan Chrome atau Edge.');
         }
-    }
-</script>
 
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.lang = 'id-ID';
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 3;
+        recognition.continuous = false;
+
+        const btnSpeak = document.getElementById('btnSpeak');
+        const btnStopSpeech = document.getElementById('btnStopSpeech');
+        const userInput = document.getElementById('userInput');
+        const qwenResponse = document.getElementById('qwenResponse');
+
+        let listening = false;
+        let finalTranscript = '';
+
+        btnSpeak.onclick = () => {
+            if (!listening) {
+                recognition.start();
+                listening = true;
+                finalTranscript = '';
+                btnSpeak.textContent = '⏹️ Berhenti Mendengarkan';
+                userInput.textContent = "🎤 Sedang mendengarkan... Silakan bicara";
+                qwenResponse.textContent = "-";
+            } else {
+                recognition.stop();
+                listening = false;
+                btnSpeak.textContent = '🎤 Mulai Bicara';
+            }
+        };
+
+        btnStopSpeech.onclick = () => {
+            window.speechSynthesis.cancel();
+        };
+
+        function speakResponse(text) {
+            if (!('speechSynthesis' in window)) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'id-ID';
+
+            const voices = speechSynthesis.getVoices();
+            const indonesianVoice = voices.find(v => v.lang.startsWith('id'));
+            if (indonesianVoice) {
+                utterance.voice = indonesianVoice;
+            }
+
+            speechSynthesis.speak(utterance);
+        }
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            if (interimTranscript) {
+                userInput.textContent = interimTranscript + ' ...';
+            } else {
+                userInput.textContent = finalTranscript;
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            if (event.error === 'no-speech') {
+                userInput.textContent = "Tidak ada suara yang tertangkap, silakan coba lagi.";
+            } else {
+                userInput.textContent = "Terjadi kesalahan: " + event.error;
+            }
+            listening = false;
+            btnSpeak.textContent = '🎤 Mulai Bicara';
+            finalTranscript = '';
+        };
+
+        recognition.onend = () => {
+            if (!finalTranscript.trim()) {
+                userInput.textContent = "Tidak ada suara yang tertangkap, silakan coba lagi.";
+                listening = false;
+                btnSpeak.textContent = '🎤 Mulai Bicara';
+                return;
+            }
+
+            fetch(`/listen?text=${encodeURIComponent(finalTranscript.trim())}`)
+                .then(res => res.json())
+                .then(data => {
+                    qwenResponse.textContent = data.response;
+                    speakResponse(data.response);
+                })
+                .catch(err => {
+                    qwenResponse.textContent = "Terjadi kesalahan saat menghubungi server.";
+                    console.error(err);
+                });
+
+            listening = false;
+            btnSpeak.textContent = '🎤 Mulai Bicara';
+            finalTranscript = '';
+        };
+    </script>
 </body>
 </html>
