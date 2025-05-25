@@ -21,6 +21,7 @@ def ask_qwen(user_text):
     'atau [{"action": "cek", "produk": "bakso"}, {"action": "cek", "produk": "mie"}]\n'
     'atau campuran seperti [{"action": "kurangi", "produk": "bakso", "jumlah": 1}, {"action": "cek", "produk": "mie"}]\n'
     'Jika user berkata "cek semua produk", jawab dengan {"action": "cek_semua"}\n'
+    'Jika user berkata "cek produk dengan stok rendah", jawab dengan {"action": "cek_rendah"}\n'
     'Jika ada gabungan perintah seperti "cek semua produk dan jelaskan apa itu", '
     'kembalikan array JSON campuran seperti [{"action": "cek_semua"}, {"action": "jawab", "response": "penjelasanmu"}]\n'
     "Jika hanya satu perintah, cukup satu objek JSON.\n"
@@ -89,7 +90,14 @@ def cek_semua_produk():
     conn.close()
     return rows
 
-
+def cek_produk_rendah(threshold=5):
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT nama, stok FROM produk WHERE stok < ?", (threshold,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return rows
 
 @app.route('/')
 def index():
@@ -153,6 +161,14 @@ def chat():
                 replies.append(f"Stok semua produk: {summary}")
             else:
                 replies.append("Tidak ada produk dalam database.")
+
+        elif action == 'cek_rendah':
+            rendah = cek_produk_rendah()
+            if rendah:
+                summary = ', '.join([f"{row[0]} ({row[1]})" for row in rendah])
+                replies.append(f"Produk dengan stok rendah: {summary}")
+            else:
+                replies.append("Tidak ada produk dengan stok rendah.")
 
         elif action == 'jawab':
             replies.append(result.get('response', ''))
