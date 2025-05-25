@@ -20,7 +20,9 @@ def ask_qwen(user_text):
     '{"action": "tambah", "produk": "mie", "jumlah": 3}]\n'
     'atau [{"action": "cek", "produk": "bakso"}, {"action": "cek", "produk": "mie"}]\n'
     'atau campuran seperti [{"action": "kurangi", "produk": "bakso", "jumlah": 1}, {"action": "cek", "produk": "mie"}]\n'
-    '**Jika user berkata "cek semua produk", jawab dengan {"action": "cek_semua"}**\n'
+    'Jika user berkata "cek semua produk", jawab dengan {"action": "cek_semua"}\n'
+    'Jika ada gabungan perintah seperti "cek semua produk dan jelaskan apa itu", '
+    'kembalikan array JSON campuran seperti [{"action": "cek_semua"}, {"action": "jawab", "response": "penjelasanmu"}]\n'
     "Jika hanya satu perintah, cukup satu objek JSON.\n"
     "Jika user hanya mengobrol biasa, balas dengan {'action': 'jawab', 'response': 'jawaban kamu'}.\n"
     "Sekarang, proses perintah berikut:"
@@ -158,7 +160,15 @@ def chat():
         else:
             replies.append(f"Aksi tidak dikenali: {action}")
 
-    return jsonify({'reply': " dan ".join(replies)})
+    # Gabungkan jawaban akhir secara natural
+    if len(replies) == 1:
+        reply_text = replies[0]
+    elif len(replies) == 2:
+        reply_text = f"{replies[0]} dan {replies[1]}"
+    else:
+        reply_text = ", ".join(replies[:-1]) + f", dan {replies[-1]}"
+
+    return jsonify({'reply': reply_text})
 
 
 if __name__ == "__main__":
