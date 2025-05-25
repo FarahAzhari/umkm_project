@@ -13,14 +13,16 @@ dashscope.base_http_api_url = config.BASE_HTTP_URL
 
 def ask_qwen(user_text):
     system_prompt = (
-        "Kamu adalah asisten inventory. "
-        "Jika user menyuruh menambah stok, membuang stok, atau menanyakan stok produk, "
-        "jawab dalam format JSON seperti ini:\n"
-        '{"action": "tambah", "produk": "bakso", "jumlah": 5}\n'
-        'atau {"action": "cek", "produk": "bakso"}\n'
-        "Jika user hanya mengobrol biasa, balas dengan {'action': 'jawab', 'response': 'jawaban kamu'}.\n"
-        "Sekarang, proses perintah berikut:"
-    )
+    "Kamu adalah asisten inventory. "
+    "Jika user menyuruh menambah stok, mengurangi stok, membuang stok, atau menanyakan stok produk, "
+    "jawab dalam format JSON seperti ini:\n"
+    '{"action": "tambah", "produk": "bakso", "jumlah": 5}\n'
+    '{"action": "kurangi", "produk": "bakso", "jumlah": 2}\n'
+    'atau {"action": "cek", "produk": "bakso"}\n'
+    "Jika user hanya mengobrol biasa, balas dengan {'action': 'jawab', 'response': 'jawaban kamu'}.\n"
+    "Sekarang, proses perintah berikut:"
+)
+
     full_prompt = f"{system_prompt}\nUser: {user_text}"
     try:
         response = Generation.call(
@@ -53,9 +55,30 @@ def tambah_stok_produk(nama_produk, jumlah=1):
     cursor.close()
     conn.close()
 
+def kurangi_stok_produk(nama_produk, jumlah=1):
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT stok FROM produk WHERE LOWER(nama) = LOWER(?)", (nama_produk,))
+    row = cursor.fetchone()
+    if row:
+        current_stok = row[0]
+        if current_stok < jumlah:
+            cursor.close()
+            conn.close()
+            raise ValueError(f"Stok {nama_produk} tidak cukup untuk dikurangi {jumlah}.")
+        cursor.execute("UPDATE produk SET stok = stok - ? WHERE LOWER(nama) = LOWER(?)", (jumlah, nama_produk))
+        conn.commit()
+    else:
+        cursor.close()
+        conn.close()
+        raise ValueError(f"Produk {nama_produk} tidak ditemukan.")
+    cursor.close()
+    conn.close()
+
+
 @app.route('/')
 def index():
-    return render_template('merchant.html')  # gunakan HTML utama dengan chatbot
+    return render_template('index.html')  # gunakan HTML utama dengan chatbot
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -84,6 +107,16 @@ def chat():
             return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
         tambah_stok_produk(produk, jumlah)
         return jsonify({'reply': f"Stok {produk} bertambah {jumlah}."})
+    elif result.get('action') == 'kurangi':
+        produk = result.get('produk')
+        jumlah = int(result.get('jumlah', 1))
+        if not produk:
+            return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
+        try:
+            kurangi_stok_produk(produk, jumlah)
+            return jsonify({'reply': f"Stok {produk} berkurang {jumlah}."})
+        except ValueError as e:
+            return jsonify({'reply': str(e)})
     elif result.get('action') == 'cek':
         produk = result.get('produk')
         if not produk:
