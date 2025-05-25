@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>GoFood Merchant UI Clone</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #fafbfc;
+        }
+        .sidebar {
+            width: 260px;
+            background: #fff;
+            height: 100vh;
+            position: fixed;
+            left: 0; top: 0;
+            border-right: 1px solid #ececec;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .logo {
+            padding: 24px 16px 8px 24px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .gofood { color: #ff2e2e; }
+        .merchant {
+            background: #ececec;
+            color: #333;
+            border-radius: 6px;
+            font-size: 12px;
+            padding: 2px 6px;
+            margin-left: 4px;
+        }
+        .menu {
+            list-style: none;
+            padding: 0 0 0 16px;
+            margin: 0;
+        }
+        .menu li {
+            padding: 12px 0;
+            color: #778;
+            cursor: pointer;
+        }
+        .menu li.active {
+            background: #f6f6f6;
+            color: #222;
+            font-weight: bold;
+            border-radius: 8px;
+            padding-left: 12px;
+        }
+        .profile {
+            display: flex;
+            align-items: center;
+            padding: 16px 16px;
+            background: #f4f4f4;
+            border-top: 1px solid #ececec;
+        }
+        .avatar {
+            background: #6c2bd7;
+            color: #fff;
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center; justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 12px;
+        }
+        .role {
+            font-size: 12px;
+            color: #888;
+        }
+        .main-content {
+            margin-left: 260px;
+            padding: 32px 40px 40px 40px;
+        }
+        .header h1 {
+            margin: 0 0 24px 0;
+            font-size: 32px;
+        }
+        .tabs {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+        .tab {
+            padding: 8px 0;
+            cursor: pointer;
+            color: #888;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            color: #222;
+            border-bottom: 2px solid #ff2e2e;
+            font-weight: bold;
+        }
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .search-bar select, .search-bar input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .btn-green {
+            background: #0f9d0f;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn-outline-green {
+            color: #0f9d0f;
+            border: 2px solid #0f9d0f;
+            background: #fff;
+            border-radius: 6px;
+            padding: 8px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        table {
+            width: 100%;
+            background: #fff;
+            border-radius: 8px;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 16px;
+        }
+        th, td {
+            padding: 16px 12px;
+            text-align: left;
+        }
+        th {
+            background: #fafbfc;
+            color: #888;
+            font-weight: bold;
+        }
+        tr:not(:last-child) {
+            border-bottom: 1px solid #f0f0f0;
+        }
+        /* Chatbot container */
+        #chatbot-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 9999;
+        }
+        #chatbot-btn {
+            background: #ff6f00;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 28px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        #chatbot-widget {
+            background: #fff;
+            color: #333;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            padding: 16px 16px 12px 16px;
+            margin-bottom: 10px;
+            min-width: 300px;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+        }
+        #chatbot-widget.hidden { display: none; }
+        #chatbot-messages { min-height: 60px; margin-bottom: 8px; max-height:200px; overflow-y:auto;}
+        #chatbot-input {
+            width: 70%;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #chatbot-send, #chatbot-voice {
+            padding: 7px 10px;
+            margin-left: 6px;
+            border: none;
+            border-radius: 8px;
+            background: #ff6f00;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        #chatbot-send:hover, #chatbot-voice:hover { background: #e65c00; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <span class="gofood">gofood</span>
+            <span class="merchant">MERCHANT</span>
+        </div>
+        <ul class="menu">
+            <li class="active">Menu</li>
+            <li>Iklan & Promo</li>
+            <li>Analisis Usaha</li>
+            <li>Laporan</li>
+            <li>Keuangan</li>
+            <li>Daftar cabang</li>
+            <li>GoDinein vouchers</li>
+            <li>Akun</li>
+            <li>Pengaturan</li>
+            <li>OTHERS</li>
+        </ul>
+        <div class="profile">
+            <div class="avatar">ZB</div>
+            <div>
+                <div>ZULFIKAR BELLA ALI</div>
+                <div class="role">Pemilik</div>
+            </div>
+        </div>
+    </div>
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Menu</h1>
+        </div>
+        <div class="tabs">
+            <span class="tab active">Semua cabang</span>
+            <span class="tab">Grup menu</span>
+        </div>
+        <div class="search-bar">
+            <select>
+                <option>Nama cabang</option>
+            </select>
+            <input type="text" placeholder="Cari nama outlet">
+            <button class="btn-green">Cari</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Merchant ID</th>
+                    <th>Nama cabang</th>
+                    <th>Telepon</th>
+                    <th>Email</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>G540987346</td>
+                    <td>Bakso Mantapp</td>
+                    <td>+6281234567890</td>
+                    <td>WirAI.gmail.com</td>
+                    <td><button class="btn-outline-green">Pengaturan GoFood</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <!-- Chatbot Button & Widget -->
+    <div id="chatbot-container">
+        <button id="chatbot-btn">💬</button>
+        <div id="chatbot-widget" class="hidden">
+            <div id="chatbot-messages"></div>
+            <input id="chatbot-input" type="text" placeholder="Ketik pesan...">
+            <button id="chatbot-send">Kirim</button>
+            <button id="chatbot-voice">🎤</button>
+        </div>
+    </div>
+    <script>
+        document.getElementById('chatbot-btn').onclick = function() {
+            const widget = document.getElementById('chatbot-widget');
+            widget.classList.toggle('hidden');
+        };
+        document.getElementById('chatbot-send').onclick = sendMessage;
+        document.getElementById('chatbot-input').addEventListener('keydown', function(e){
+            if(e.key === "Enter") sendMessage();
+        });
+        function sendMessage() {
+            const input = document.getElementById('chatbot-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+            appendMessage('<b>Anda:</b> ' + msg);
+            input.value = '';
+            fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({message: msg})
+            })
+            .then(res => res.json())
+            .then(data => appendMessage('<b>WirAi:</b> ' + data.reply));
+        }
+        function appendMessage(text) {
+            const messages = document.getElementById('chatbot-messages');
+            messages.innerHTML += `<div style="margin-bottom:8px">${text}</div>`;
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // Voice input
+        document.getElementById('chatbot-voice').onclick = function() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                alert('Browser tidak mendukung voice recognition');
+                return;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition = new SpeechRecognition();
+            recognition.lang = 'id-ID';
+            recognition.onresult = function(event) {
+                let transcript = event.results[0][0].transcript;
+                document.getElementById('chatbot-input').value = transcript;
+                sendMessage();
+            };
+            recognition.start();
+        };
+    </script>
+</body>
+</html>

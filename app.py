@@ -8,7 +8,6 @@ import json
 
 app = Flask(__name__)
 
-# DashScope config
 dashscope.api_key = config.API_KEY
 dashscope.base_http_api_url = config.BASE_HTTP_URL
 
@@ -56,13 +55,14 @@ def tambah_stok_produk(nama_produk, jumlah=1):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('merchant.html')  # gunakan HTML utama dengan chatbot
 
-@app.route('/listen')
-def listen():
-    user_text = request.args.get('text', '').strip()
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    user_text = data.get('message', '').strip()
     if not user_text:
-        return jsonify({'response': 'Tidak ada input suara.'})
+        return jsonify({'reply': 'Tidak ada input.'})
 
     llm_result = ask_qwen(user_text)
     print("[DEBUG] LLM RAW:", llm_result)
@@ -75,25 +75,25 @@ def listen():
     try:
         result = json.loads(llm_result_clean)
     except Exception as e:
-        return jsonify({'response': f'Gagal parsing hasil LLM: {e}\n{llm_result}'})
+        return jsonify({'reply': f'Gagal parsing hasil LLM: {e}\n{llm_result}'})
 
     if result.get('action') == 'tambah':
         produk = result.get('produk')
         jumlah = int(result.get('jumlah', 1))
         if not produk:
-            return jsonify({'response': 'Nama produk tidak terdeteksi.'})
+            return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
         tambah_stok_produk(produk, jumlah)
-        return jsonify({'response': f"Stok {produk} bertambah {jumlah}."})
+        return jsonify({'reply': f"Stok {produk} bertambah {jumlah}."})
     elif result.get('action') == 'cek':
         produk = result.get('produk')
         if not produk:
-            return jsonify({'response': 'Nama produk tidak terdeteksi.'})
+            return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
         stok = cek_stok_produk(produk)
-        return jsonify({'response': f"Stok {produk}: {stok}"})
+        return jsonify({'reply': f"Stok {produk}: {stok}"})
     elif result.get('action') == 'jawab':
-        return jsonify({'response': result.get('response', '')})
+        return jsonify({'reply': result.get('response', '')})
     else:
-        return jsonify({'response': llm_result})
+        return jsonify({'reply': llm_result})
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
