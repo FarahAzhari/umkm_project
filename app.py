@@ -14,14 +14,17 @@ dashscope.base_http_api_url = config.BASE_HTTP_URL
 def ask_qwen(user_text):
     system_prompt = (
     "Kamu adalah asisten inventory. "
-    "Jika user menyuruh menambah stok, mengurangi stok, membuang stok, atau menanyakan stok produk, "
-    "jawab dalam format JSON seperti ini:\n"
-    '{"action": "tambah", "produk": "bakso", "jumlah": 5}\n'
-    '{"action": "kurangi", "produk": "bakso", "jumlah": 2}\n'
-    'atau {"action": "cek", "produk": "bakso"}\n'
+    "Jika user menyuruh menambah stok, mengurangi stok, atau menanyakan stok beberapa produk sekaligus, "
+    "jawab dalam format JSON array seperti ini:\n"
+    '[{"action": "tambah", "produk": "bakso", "jumlah": 2}, '
+    '{"action": "tambah", "produk": "mie", "jumlah": 3}]\n'
+    'atau [{"action": "cek", "produk": "bakso"}, {"action": "cek", "produk": "mie"}]\n'
+    'atau campuran seperti [{"action": "kurangi", "produk": "bakso", "jumlah": 1}, {"action": "cek", "produk": "mie"}]\n'
+    "Jika hanya satu perintah, cukup satu objek JSON.\n"
     "Jika user hanya mengobrol biasa, balas dengan {'action': 'jawab', 'response': 'jawaban kamu'}.\n"
     "Sekarang, proses perintah berikut:"
 )
+
 
     full_prompt = f"{system_prompt}\nUser: {user_text}"
     try:
@@ -96,37 +99,49 @@ def chat():
     print("[DEBUG] LLM CLEAN:", llm_result_clean)
 
     try:
-        result = json.loads(llm_result_clean)
+        parsed = json.loads(llm_result_clean)
+        actions = parsed if isinstance(parsed, list) else [parsed]
     except Exception as e:
         return jsonify({'reply': f'Gagal parsing hasil LLM: {e}\n{llm_result}'})
 
-    if result.get('action') == 'tambah':
+    replies = []
+    for result in actions:
+        action = result.get('action')
         produk = result.get('produk')
-        jumlah = int(result.get('jumlah', 1))
-        if not produk:
-            return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
-        tambah_stok_produk(produk, jumlah)
-        return jsonify({'reply': f"Stok {produk} bertambah {jumlah}."})
-    elif result.get('action') == 'kurangi':
-        produk = result.get('produk')
-        jumlah = int(result.get('jumlah', 1))
-        if not produk:
-            return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
-        try:
-            kurangi_stok_produk(produk, jumlah)
-            return jsonify({'reply': f"Stok {produk} berkurang {jumlah}."})
-        except ValueError as e:
-            return jsonify({'reply': str(e)})
-    elif result.get('action') == 'cek':
-        produk = result.get('produk')
-        if not produk:
-            return jsonify({'reply': 'Nama produk tidak terdeteksi.'})
-        stok = cek_stok_produk(produk)
-        return jsonify({'reply': f"Stok {produk}: {stok}"})
-    elif result.get('action') == 'jawab':
-        return jsonify({'reply': result.get('response', '')})
-    else:
-        return jsonify({'reply': llm_result})
+        jumlah = int(result.get('jumlah', 1)) if 'jumlah' in result else None
+
+        if action == 'tambah':
+            if not produk:
+                replies.append("Nama produk tidak terdeteksi.")
+                continue
+            tambah_stok_produk(produk, jumlah)
+            replies.append(f"stok {produk} bertambah {jumlah}")
+
+        elif action == 'kurangi':
+            if not produk:
+                replies.append("Nama produk tidak terdeteksi.")
+                continue
+            try:
+                kurangi_stok_produk(produk, jumlah)
+                replies.append(f"stok {produk} berkurang {jumlah}")
+            except ValueError as e:
+                replies.append(str(e))
+
+        elif action == 'cek':
+            if not produk:
+                replies.append("Nama produk tidak terdeteksi.")
+                continue
+            stok = cek_stok_produk(produk)
+            replies.append(f"stok {produk}: {stok}")
+
+        elif action == 'jawab':
+            replies.append(result.get('response', ''))
+
+        else:
+            replies.append(f"Aksi tidak dikenali: {action}")
+
+    return jsonify({'reply': " dan ".join(replies)})
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
